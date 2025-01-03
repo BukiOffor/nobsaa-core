@@ -64,9 +64,23 @@ contract NobsaaOpenGovernance {
         offChainProposals[proposal] = OffChainProposal(
             msg.sender, proposal, threshold, 0, 0, block.timestamp, uint256(block.timestamp + (duration * 86400))
         );
+        Token(governanceToken).initateVoting();
         emit OffChainProposalCreated(proposal, msg.sender, block.timestamp);
     }
 
+    /**
+     * @dev This function is used to end the offchain proposal and restart the governance trading
+     */
+    function endOffChainProposal() public {
+        require(msg.sender == owner, "Only the owner can restart the Governance trading");
+        Token(governanceToken).endVoting();
+    }
+
+    /**
+     * @dev This function is used to vote on an offchain proposal
+     * @param proposal the proposal to vote on
+     * @param vote the vote to cast
+     */
     function voteOffChainProposal(string memory proposal, bool vote) public {
         OffChainProposal storage offChainProposal = offChainProposals[proposal];
         require(offChainProposal.DayOfProposal != 0, "Proposal does not exist");
@@ -83,6 +97,10 @@ contract NobsaaOpenGovernance {
         }
     }
 
+    /**
+     * @dev This function is used to cancel an offchain proposal
+     * @param proposal the proposal to cancel
+     */
     function cancelOffChainProposal(string memory proposal) public {
         require(
             msg.sender == offChainProposals[proposal].Proposer || msg.sender == owner,
@@ -92,6 +110,14 @@ contract NobsaaOpenGovernance {
         delete offChainProposals[proposal];
     }
 
+    /** 
+        * @dev This function is used to register a new member to the community 
+        * @param who the address of the member
+        * @param ident the identifier of the member
+        * @param year the year of registration
+        * @param executive the executive status of the member
+        * @param bio the bio of the member
+    */
     function registerMember(address who, string memory ident, uint16 year, bool executive, string memory bio)
         external
     {
