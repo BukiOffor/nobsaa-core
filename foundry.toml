@@ -8,3 +8,4 @@ libs = ["lib"]
 remappings = [
     '@openzeppelin-contracts/=lib/openzeppelin-contracts/'
     ]
+gas_reports = ["*"]

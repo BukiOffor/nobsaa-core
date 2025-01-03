@@ -7,12 +7,18 @@ import {Certificates as Certificate} from "./Certificate.sol";
 import {Token} from "./Token.sol";
 
 contract NobsaaOpenGovernance {
+    event MemberRegisterd(address indexed who, string indexed identifier, uint256 timestamp);
+    event MemberRenewed(address indexed who, uint16 indexed duration, uint256 weight, uint256 timestamp);
+    event MemberRevoked(address indexed who, uint256 indexed timestamp);
+    event OffChainProposalCreated(string indexed proposal, address indexed proposer, uint256 timestamp);
+
     struct Member {
         string Identifier;
         uint16 YearOfRegisteration;
         bool Executive;
         string Bio;
     }
+
     struct OffChainProposal {
         address Proposer;
         string Proposal;
@@ -22,7 +28,8 @@ contract NobsaaOpenGovernance {
         uint256 DayOfProposal;
         uint256 DurationInDays;
     }
-    uint256 constant WEIGHT = 1000 * 10**18;
+
+    uint256 constant WEIGHT = 1000 * 10 ** 18;
     address public owner;
     uint256 immutable yearOfLaunch;
     Token public governanceToken;
@@ -36,7 +43,6 @@ contract NobsaaOpenGovernance {
         yearOfLaunch = (block.timestamp / 31557600) + 1970;
         governanceToken = new Token();
         owner = msg.sender;
-
     }
 
     /**
@@ -55,8 +61,10 @@ contract NobsaaOpenGovernance {
 
     function createOffChainProposal(string memory proposal, uint32 threshold, uint32 duration) public {
         require(offChainProposals[proposal].DayOfProposal == 0, "Proposal already exists");
-        offChainProposals[proposal] =
-            OffChainProposal(msg.sender, proposal, threshold, 0, 0, block.timestamp, uint256(block.timestamp + (duration * 86400)));
+        offChainProposals[proposal] = OffChainProposal(
+            msg.sender, proposal, threshold, 0, 0, block.timestamp, uint256(block.timestamp + (duration * 86400))
+        );
+        emit OffChainProposalCreated(proposal, msg.sender, block.timestamp);
     }
 
     function voteOffChainProposal(string memory proposal, bool vote) public {
@@ -74,10 +82,12 @@ contract NobsaaOpenGovernance {
             offChainProposal.NayVotes++;
         }
     }
-   
 
     function cancelOffChainProposal(string memory proposal) public {
-        require(msg.sender == offChainProposals[proposal].Proposer || msg.sender == owner, "Only the proposer can cancel the proposal");
+        require(
+            msg.sender == offChainProposals[proposal].Proposer || msg.sender == owner,
+            "Only the proposer can cancel the proposal"
+        );
         require(offChainProposals[proposal].DayOfProposal != 0, "Proposal does not exist");
         delete offChainProposals[proposal];
     }
@@ -91,6 +101,7 @@ contract NobsaaOpenGovernance {
         community[who] = Member(ident, year, executive, bio);
         Token(governanceToken).mint(who, WEIGHT);
         membersCount++;
+        emit MemberRegisterd(who, ident, block.timestamp);
     }
 
     /**
@@ -102,6 +113,7 @@ contract NobsaaOpenGovernance {
         require(community[who].YearOfRegisteration != 0, "Member does not exist");
         uint256 weight = duration * WEIGHT;
         Token(governanceToken).mint(who, weight);
+        emit MemberRenewed(who, duration, weight, block.timestamp);
     }
 
     function revokeMembership(address who) external {
@@ -110,6 +122,7 @@ contract NobsaaOpenGovernance {
         delete community[who];
         Token(governanceToken).burn(who, Token(governanceToken).balanceOf(who));
         membersCount--;
+        emit MemberRevoked(who, block.timestamp);
     }
 
     // this weight is calculated based on the number of years a user missed since the launch of the community
